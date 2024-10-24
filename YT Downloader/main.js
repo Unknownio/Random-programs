@@ -57,7 +57,7 @@ const downloadAudio = (url) => {
       if (another) {
         promptForUrl(); // Start over if the user wants to download again
       } else {
-        console.log('Exiting the program. Goodbye!');
+        console.log('Goodbye ^^');
       }
     });
   });
