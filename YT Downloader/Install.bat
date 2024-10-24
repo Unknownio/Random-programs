@@ -1,16 +1,18 @@
 @echo off
-echo "Press Any Key"
-call ./read-me.bat
-echo Download will start 3, 2, 1, Now!!
+echo Installing Scoop and Node.js...
 
-rem Open PowerShell and run the scripts
-powershell.exe -ExecutionPolicy Bypass -NoProfile -File "./Packages/install-scoop.ps1"
-powershell.exe -ExecutionPolicy Bypass -NoProfile -File "./Packages/Install-node.js.ps1"
+:: Install Scoop
+echo Checking for Scoop...
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "if (-Not (Get-Command scoop -ErrorAction SilentlyContinue)) { Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh'); } else { Write-Host 'Scoop is already installed.'; }"
 
-rem Update scoop and install packages
-powershell.exe -ExecutionPolicy Bypass -Command "scoop update; scoop install nodejs; scoop update python"
+:: Check if Scoop is installed successfully
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "if (-Not (Get-Command scoop -ErrorAction SilentlyContinue)) { echo 'Scoop installation failed.'; exit 1; }"
 
-rem Install npm packages
-powershell.exe -ExecutionPolicy Bypass -Command "npm install"
+:: Install Node.js using Scoop
+echo Installing Node.js...
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "if (Get-Command scoop -ErrorAction SilentlyContinue) { scoop install nodejs; }"
+
+:: Check if Node.js is installed successfully
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "if (-Not (Get-Command node -ErrorAction SilentlyContinue)) { echo 'Node.js installation failed.'; exit 1; } else { echo 'Node.js installed successfully!'; }"
 
 PAUSE
