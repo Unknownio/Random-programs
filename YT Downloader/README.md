@@ -17,21 +17,21 @@ A simple yet powerful Node.js script that allows you to download **YouTube video
 
 ```bash
 # 1. Clone the repository:
-git clone https://github.com/yourusername/yt-media-downloader.git
-cd yt-media-downloader
+git@github.com:Unknownio/Random-programs.git
+cd Random-program
 
 # 2. Install dependencies:
 npm install
 
 # 3. Install yt-dlp:
 # For Windows:
-# Download yt-dlp from https://github.com/yt-dlp/yt-dlp#installation
+# Download yt-dlp with the install.bat
 # For Linux:
 sudo curl -L https://yt-dlp.org/downloads/latest/yt-dlp -o /usr/local/bin/yt-dlp
 sudo chmod a+rx /usr/local/bin/yt-dlp
 
 # 4. Run the script:
-node downloader.js
+node main.js
 ```
 ## 🎮 How It Works
 URL Input: The script will prompt you to paste a YouTube video URL.
