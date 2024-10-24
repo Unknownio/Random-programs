@@ -15,4 +15,6 @@ powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "if (Get-Command scoo
 :: Check if Node.js is installed successfully
 powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "if (-Not (Get-Command node -ErrorAction SilentlyContinue)) { echo 'Node.js installation failed.'; exit 1; } else { echo 'Node.js installed successfully!'; }"
 
+npm i
+
 PAUSE
