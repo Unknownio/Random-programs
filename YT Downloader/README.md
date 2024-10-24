@@ -17,7 +17,7 @@ A simple yet powerful Node.js script that allows you to download **YouTube video
 
 ```bash
 # 1. Clone the repository:
-git@github.com:Unknownio/Random-programs.git
+git clone https://github.com/Unknownio/Random-programs.git
 cd Random-program
 
 # 2. Install dependencies:
