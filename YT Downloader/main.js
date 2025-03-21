@@ -3,82 +3,160 @@ const { exec } = require('child_process');
 const readlineSync = require('readline-sync');
 const path = require('path');
 
-// Function to download audio or video using yt-dlp
-const downloadMedia = (url, format) => {
-  // Command to get the video title for naming
-  const titleCommand = `yt-dlp -e "${url}"`;
-
-  exec(titleCommand, (error, title) => {
-    if (error) {
-      console.error(`Error fetching title: ${error.message}`);
-      return;
+const checkIfPlaylist = (url, callback) => {
+  exec(`yt-dlp --print "is_playlist" "${url}"`, (error, stdout, stderr) => {
+    if (error || stderr) {
+      console.error(`Error checking URL: ${stderr || error.message}`);
+      return callback(null);
     }
-
-    // Clean the title for file system compatibility
-    const cleanTitle = title.trim().replace(/[<>:"/\\|?*]+/g, '_'); // Replace invalid characters
-    const extension = format === 'mp3' ? 'mp3' : 'mp4';
-    const filePath = path.join(__dirname, 'Downloads', `${cleanTitle}.${extension}`);
-
-    // Ensure the Downloads folder exists
-    if (!fs.existsSync(path.join(__dirname, 'Downloads'))) {
-      fs.mkdirSync(path.join(__dirname, 'Downloads'));
-    }
-
-    // Command to download the media based on the user's choice (MP4 or MP3), with progress
-    const command = format === 'mp3'
-      ? `yt-dlp -x --audio-format mp3 --progress -o "${filePath}" "${url}"`
-      : `yt-dlp -f bestvideo+bestaudio --merge-output-format mp4 --progress -o "${filePath}" "${url}"`;
-
-    console.log(`Downloading ${format.toUpperCase()}...`);
-
-    // Start downloading the media
-    const downloadProcess = exec(command);
-
-    // Output download progress in real-time
-    downloadProcess.stdout.on('data', (data) => {
-      process.stdout.write(data); // Display yt-dlp's native progress output (speed, ETA, etc.)
-    });
-
-    downloadProcess.on('close', (code) => {
-      process.stdout.write('\n'); // Move to a new line after completion
-      if (code !== 0) {
-        console.error(`Download process exited with code ${code}`);
-        return;
-      }
-
-      console.log(`${format.toUpperCase()} downloaded: ${filePath}`);
-
-      // Ask user if they want to download another video
-      const another = readlineSync.keyInYNStrict('Do you want to download another video?');
-      if (another) {
-        promptForUrl(); // Start over if the user wants to download again
-      } else {
-        console.log('Goodbye ^^');
-      }
-    });
+    
+    const isPlaylist = stdout.trim() === 'yes';
+    callback(isPlaylist);
   });
 };
 
-// Function to prompt user for YouTube URL and format
-const promptForUrl = () => {
-  const url = readlineSync.question('Paste the YouTube video URL: ');
-
-  // Validate URL using a basic check
-  if (url.startsWith('https://www.youtube.com/watch?v=')) {
-    // Ask the user whether they want to download MP4 (video) or MP3 (audio)
-    const format = readlineSync.question('Do you want to download MP4 (video) or MP3 (audio)? (Enter "mp4" or "mp3"): ').toLowerCase();
-
-    if (format === 'mp4' || format === 'mp3') {
-      downloadMedia(url, format); // Proceed with the chosen format
-    } else {
-      console.log('Invalid format. Please enter "mp4" or "mp3".');
-      promptForUrl(); // Ask again if the input is invalid
+const getTitle = (url, callback) => {
+  exec(`yt-dlp --print "%(title)s" "${url}"`, (error, stdout, stderr) => {
+    if (error || stderr) {
+      console.error(`Error getting title: ${stderr || error.message}`);
+      return callback(null);
     }
-  } else {
-    console.log('Invalid URL. Please try again.');
-    promptForUrl(); // Ask for the URL again
-  }
+
+    const cleanTitle = stdout.trim().replace(/[<>:"/\\|?*]+/g, '_'); // Remove invalid characters
+    callback(cleanTitle);
+  });
 };
 
-// Start the process
+const getPlaylistSize = (url, callback) => {
+  exec(`yt-dlp --print "%(playlist_count)s" "${url}"`, (error, stdout, stderr) => {
+    if (error || stderr) {
+      console.error(`Error fetching playlist size: ${stderr || error.message}`);
+      return callback(null);
+    }
+
+    const size = parseInt(stdout.trim(), 10);
+    callback(isNaN(size) ? null : size);
+  });
+};
+
+const checkDownloadCompletion = (folderPath, expectedCount) => {
+  fs.readdir(folderPath, (err, files) => {
+    if (err) {
+      console.error(`Error reading download folder: ${err.message}`);
+      return;
+    }
+
+    const downloadedFiles = files.filter(file => file.endsWith('.mp3') || file.endsWith('.mp4')).length;
+
+    if (downloadedFiles >= expectedCount) {
+      console.log(`✅ All ${expectedCount} files were successfully downloaded!`);
+    } else {
+      console.log(`⚠️ Download incomplete! Expected ${expectedCount}, but only found ${downloadedFiles} files.`);
+    }
+  });
+};
+
+const downloadMedia = (url, format, isPlaylist) => {
+  getTitle(url, (title) => {
+    if (!title) {
+      console.log("Could not fetch title. Downloading to default folder.");
+      title = "Unknown"; // Fallback in case the title couldn't be fetched
+    }
+
+    const folderPath = path.join(__dirname, 'Downloads', title);
+
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath, { recursive: true });
+    }
+
+    if (isPlaylist) {
+      getPlaylistSize(url, (playlistSize) => {
+        if (!playlistSize) {
+          console.log("Could not determine playlist size.");
+          return;
+        }
+
+        const outputFormat = path.join(folderPath, '%(title)s.%(ext)s');
+        const command = format === 'mp3'
+          ? `yt-dlp -x --audio-format mp3 --progress -o "${outputFormat}" "${url}"`
+          : `yt-dlp -f bestvideo+bestaudio --merge-output-format mp4 --progress -o "${outputFormat}" "${url}"`;
+
+        console.log(`\nDetected: Playlist (${playlistSize} videos)`);
+        console.log(`Saving in folder: ${folderPath}`);
+        console.log(`Downloading ${format.toUpperCase()}...`);
+        console.log(`Running command: ${command}\n`);
+
+        const downloadProcess = exec(command, (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Error: ${error.message}`);
+            return;
+          }
+          if (stderr) {
+            console.error(`yt-dlp error: ${stderr}`);
+            return;
+          }
+          console.log(stdout);
+          console.log(`Download complete! Files saved in: ${folderPath}`);
+
+          // Check if all videos were downloaded
+          checkDownloadCompletion(folderPath, playlistSize);
+        });
+
+        downloadProcess.stdout.on('data', (data) => {
+          process.stdout.write(data);
+        });
+      });
+    } else {
+      // Single video download
+      const outputFormat = path.join(folderPath, '%(title)s.%(ext)s');
+      const command = format === 'mp3'
+        ? `yt-dlp -x --audio-format mp3 --progress -o "${outputFormat}" "${url}"`
+        : `yt-dlp -f bestvideo+bestaudio --merge-output-format mp4 --progress -o "${outputFormat}" "${url}"`;
+
+      console.log(`\nDetected: Single Video`);
+      console.log(`Saving in folder: ${folderPath}`);
+      console.log(`Downloading ${format.toUpperCase()}...`);
+      console.log(`Running command: ${command}\n`);
+
+      const downloadProcess = exec(command, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error: ${error.message}`);
+          return;
+        }
+        if (stderr) {
+          console.error(`yt-dlp error: ${stderr}`);
+          return;
+        }
+        console.log(stdout);
+        console.log(`Download complete! File saved in: ${folderPath}`);
+      });
+
+      downloadProcess.stdout.on('data', (data) => {
+        process.stdout.write(data);
+      });
+    }
+  });
+};
+
+const promptForUrl = () => {
+  const url = readlineSync.question('Paste the YouTube video or playlist URL: ');
+
+  checkIfPlaylist(url, (isPlaylist) => {
+    if (isPlaylist === null) {
+      console.log('Invalid URL or error detecting type. Please try again.');
+      return promptForUrl();
+    }
+
+    // Ask format whether it's a single video or a playlist
+    const format = readlineSync.question('Download MP4 (video) or MP3 (audio)? (Enter "mp4" or "mp3"): ').toLowerCase();
+    
+    if (format === 'mp4' || format === 'mp3') {
+      downloadMedia(url, format, isPlaylist);
+    } else {
+      console.log('Invalid format. Please enter "mp4" or "mp3".');
+      promptForUrl();
+    }
+  });
+};
+
 promptForUrl();
