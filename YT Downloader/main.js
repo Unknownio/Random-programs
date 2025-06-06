@@ -77,6 +77,9 @@ const downloadMedia = (url, format, isPlaylist) => {
         }
 
         const outputFormat = path.join(folderPath, '%(title)s.%(ext)s');
+
+        const extraFlags = `--user-agent "com.google.android.youtube/17.10.35 (Linux; U; Android 11)" --force-insecure --no-check-formats --no-youtube-unavailable-fragments`;
+
         const command = format === 'mp3'
           ? `yt-dlp -x --audio-format mp3 --progress -o "${outputFormat}" "${url}"`
           : `yt-dlp -f bestvideo+bestaudio --merge-output-format mp4 --progress -o "${outputFormat}" "${url}"`;
