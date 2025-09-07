@@ -1,0 +1,18 @@
+{
+  "lm_studio": {
+    "host": "127.0.0.1",
+    "port": 1234,
+    "api_path": "/v1/chat/completions",
+    "health_path": "/health"
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080
+  },
+  "database": {
+    "file": "chat_database.db"
+  },
+  "security": {
+    "password_min_length": 4
+  }
+}
